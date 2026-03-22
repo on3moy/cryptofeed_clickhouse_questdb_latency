@@ -1,0 +1,76 @@
+services:
+  cryptofeed:
+    container_name: cryptofeed
+    build:
+      context: cryptofeed
+    depends_on:
+      questdb:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    networks:
+      - cryptofeed_net
+
+  deephaven:
+    container_name: deephaven
+    build:
+      context: deephaven
+    environment:
+      START_OPTS: -Xmx4g -DAuthHandlers=io.deephaven.auth.AnonymousAuthenticationHandler -Ddeephaven.application.dir=/apps
+    ports:
+      - "10000:10000"
+    volumes:
+      - ./deephaven/notebooks:/data/storage/notebooks
+    depends_on:
+      questdb:
+        condition: service_healthy
+    networks:
+      - cryptofeed_net
+
+  questdb:
+    container_name: questdb
+    image: questdb/questdb:9.2.0
+    ports:
+      - "9000:9000"   # HTTP UI
+      - "8812:8812"   # Postgres wire protocol (Deephaven connection)
+      - "9009:9009"   # ILP (line protocol write)
+    volumes:
+      - questdb_data:/var/lib/questdb
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q ':2328' /proc/net/tcp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - cryptofeed_net
+
+  clickhouse:
+    container_name: clickhouse
+    image: clickhouse/clickhouse-server:24.3
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "8123:8123"   # HTTP UI
+      - "9001:9000"   # Native protocol (remapped to avoid conflict with questdb)
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - cryptofeed_net
+
+volumes:
+  questdb_data:
+  clickhouse_data:
+
+networks:
+  cryptofeed_net:
+    driver: bridge
