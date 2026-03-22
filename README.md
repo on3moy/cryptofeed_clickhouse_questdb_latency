@@ -29,7 +29,7 @@ All three services run on the same Docker bridge network (`cryptofeed_net`) so n
 ## Quickstart
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/on3moy/cryptofeed_clickhouse_questdb_latency.git
 cd cryptofeed-clickhouse/docker
 docker compose up --build -d
 ```
