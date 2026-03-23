@@ -24,6 +24,8 @@ services:
     depends_on:
       questdb:
         condition: service_healthy
+      clickhouse:
+        condition: service_healthy
     networks:
       - cryptofeed_net
 
