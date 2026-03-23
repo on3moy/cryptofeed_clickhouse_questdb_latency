@@ -267,11 +267,7 @@ class ClickHouseBackend(TableDataServiceBackend, ABC):
 
     def _get_table_size(self, table_name: str) -> int:
         client = ch.get_client()
-        result = client.query(
-            "SELECT sum(rows) FROM system.parts"
-            " WHERE database = 'default' AND table = {table:String} AND active = 1",
-            parameters={"table": table_name},
-        )
+        result = client.query(f"SELECT count(*) FROM {table_name}")
         count = result.result_rows[0][0] if result.result_rows else 0
         return int(count or 0)
 
